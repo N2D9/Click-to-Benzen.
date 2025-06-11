@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>Click to Benzen.</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/addons/p5.sound.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+</head>
+<body>
+<script>
+let Engine = Matter.Engine,
+    World = Matter.World,
+    Bodies = Matter.Bodies,
+    Body = Matter.Body,
+    Events = Matter.Events;
+
+let engine;
+let world;
+let hexagons = [];
+let ground = [];
+let glassSound;
+
+class Hexagon {
+  constructor(body, radius) {
+    this.body = body;
+    this.r = radius;
+  }
+
+  display() {
+    let pos = this.body.position;
+    let angle = this.body.angle;
+
+    push();
+    translate(pos.x, pos.y);
+    rotate(angle);
+    stroke(0);
+    strokeWeight(2);
+    fill(255);
+
+    beginShape();
+    for (let i = 0; i < 6; i++) {
+      let a = TWO_PI / 6 * i - PI / 6;
+      let x = cos(a) * this.r;
+      let y = sin(a) * this.r;
+      vertex(x, y);
+    }
+    endShape(CLOSE);
+
+    strokeWeight(2);
+    for (let i = 0; i < 6; i += 2) {
+      let a1 = TWO_PI / 6 * i - PI / 6;
+      let a2 = TWO_PI / 6 * (i + 1) - PI / 6;
+      let ax = cos(a1) * this.r;
+      let ay = sin(a1) * this.r;
+      let bx = cos(a2) * this.r;
+      let by = sin(a2) * this.r;
+
+      let dir = createVector(bx - ax, by - ay).normalize();
+      let offset = createVector(-dir.y, dir.x).mult(7);
+
+      line(ax + offset.x, ay + offset.y, bx + offset.x, by + offset.y);
+    }
+    pop();
+  }
+}
+
+let titleAlpha = 255;
+let counterAlpha = 0;
+let showCounter = false;
+let collisionCount = 0;
+
+let lastSoundTime = 0;  // 最後に音を鳴らした時間（ミリ秒）
+let autoSpawnInterval = null;
+
+function preload() {
+  soundFormats('mp3');
+  glassSound = loadSound('glass.mp3');
+}
+
+function setup() {
+  createCanvas(1500, 800);
+  engine = Engine.create();
+  world = engine.world;
+
+  // 左坂（谷型の左側）
+  let leftSlope = Bodies.rectangle(1200, 700, 770, 1, {
+    isStatic: true,
+    angle: -PI / 12
+  });
+
+  // 右坂（谷型の右側）
+  let rightSlope = Bodies.rectangle(300, 700, 770, 1, {
+    isStatic: true,
+    angle: PI / 12
+  });
+
+  World.add(world, [leftSlope, rightSlope]);
+  ground = [leftSlope, rightSlope];
+
+  Events.on(engine, "collisionStart", event => {
+    for (let pair of event.pairs) {
+      let velA = pair.bodyA.velocity;
+      let velB = pair.bodyB.velocity;
+      let impactSpeed = dist(velA.x, velA.y, velB.x, velB.y);
+
+      if (impactSpeed < 3) continue;  // 弱い衝突は無視
+
+      collisionCount++;
+
+      let now = millis();
+      if (now - lastSoundTime < 100) continue;  // 0.1秒以内の連続は無視
+
+      let volume = constrain((impactSpeed - 3) / 10, 0, 0.3);
+
+      if (glassSound.isPlaying()) {
+        glassSound.stop();
+      }
+      glassSound.setVolume(volume);
+      glassSound.play();
+      lastSoundTime = now;
+    }
+  });
+}
+
+function draw() {
+  background(255);
+  Engine.update(engine);
+
+  // 六角形表示と画面外削除
+  for (let i = hexagons.length - 1; i >= 0; i--) {
+    let hex = hexagons[i];
+    hex.display();
+
+    let pos = hex.body.position;
+    if (pos.x < -100 || pos.x > width + 100 || pos.y < -100 || pos.y > height + 100) {
+      World.remove(world, hex.body);
+      hexagons.splice(i, 1);
+    }
+  }
+
+  // 地面描画
+  fill(255);
+  for (let g of ground) {
+    drawBody(g);
+  }
+
+  // タイトル表示とフェードアウト
+  if (titleAlpha > 0) {
+    fill(0, titleAlpha);
+    textAlign(CENTER, CENTER);
+    textSize(64);
+    text("Click to Benzen.", width / 2, height / 2);
+    if (showCounter) {
+      titleAlpha -= 2;
+      if (titleAlpha < 0) titleAlpha = 0;
+    }
+  }
+
+  // カウンターのフェードインと表示
+  if (showCounter && counterAlpha < 255) {
+    counterAlpha += 3;
+    if (counterAlpha > 255) counterAlpha = 255;
+  }
+  if (counterAlpha > 0) {
+    fill(0, counterAlpha);
+    textAlign(LEFT, TOP);
+    textSize(64);
+    text(collisionCount, 750 -30 * Math.floor(Math.log10(collisionCount)) , 400);
+  }
+}
+
+function mousePressed() {
+  if (!showCounter) {
+    showCounter = true;
+
+    // 1秒ごとに自動生成を開始
+    autoSpawnInterval = setInterval(() => {
+      spawnHexagon();
+    }, 3000);
+  }
+
+  // クリック時にも必ず生成
+  spawnHexagon();
+}
+
+function spawnHexagon() {
+  let hexSize = random(25, 60);
+  let startX = -hexSize;
+  let startY = random(0, height - 300);
+
+  let body = Bodies.polygon(startX, startY, 6, hexSize, {
+    restitution: 1,
+    friction: 0
+  });
+
+  Body.setAngle(body, random(-PI / 6, PI / 6));
+  let speedX = random(5, 12);
+  let speedY = random(-7, 5);
+  Body.setVelocity(body, { x: speedX, y: speedY });
+
+  World.add(world, body);
+  hexagons.push(new Hexagon(body, hexSize));
+}
+
+function drawBody(body) {
+  const pos = body.position;
+
+  push();
+  translate(pos.x, pos.y);
+  rotate(0);
+
+  beginShape();
+  for (let v of body.vertices) {
+    vertex(v.x - pos.x, v.y - pos.y);
+  }
+  endShape(CLOSE);
+  pop();
+}
+</script>
+</body>
+</html>

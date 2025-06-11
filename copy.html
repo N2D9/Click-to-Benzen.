@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>クリックで六角形を飛ばす</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+</head>
+<body>
+<script>
+let Engine = Matter.Engine,
+    World = Matter.World,
+    Bodies = Matter.Bodies,
+    Body = Matter.Body;
+
+let engine;
+let world;
+let hexagons = [];
+let ground;
+
+function setup() {
+  createCanvas(1500, 800);
+  engine = Engine.create();
+  world = engine.world;
+
+  // 傾いた地面（5度）
+  let groundAngle = PI/36;
+  ground = Bodies.rectangle(750
+  , height , 1800, 300, {
+    isStatic: true,
+    angle: groundAngle
+  });
+  World.add(world, ground);
+}
+
+function draw() {
+  background(255);
+  Engine.update(engine);
+
+  // 六角形を描画
+  fill(255);
+  for (let hex of hexagons) {
+    drawBody(hex);
+  }
+
+  // 地面を描画
+  fill(255);
+  drawBody(ground);
+}
+
+function mousePressed() {
+  let hexSize = random(20,60);
+
+  // 画面外左側（xは -hexSizeあたり）、yは少し余裕を持たせてランダム
+  let startX = -hexSize;
+  let startY = random(0, height - 300);
+
+  // 六角形作成
+  let hex = Bodies.polygon(startX, startY, 6, hexSize, {
+    restitution: 1,
+    friction: 0
+  });
+
+  // ランダムな角度（-30度〜30度）
+  Body.setAngle(hex, random(-PI / 6, PI / 6));
+
+  // ランダムな初速（右向き）
+  let speedX = random(5, 12);
+  let speedY = random(-7, 5);
+  Body.setVelocity(hex, { x: speedX, y: speedY });
+
+  World.add(world, hex);
+  hexagons.push(hex);
+}
+
+function drawBody(body) {
+  const pos = body.position;
+  const angle = body.angle;
+
+  push();
+  translate(pos.x, pos.y);
+  rotate(0);
+
+  beginShape();
+  for (let v of body.vertices) {
+    vertex(v.x -pos.x , v.y - pos.y);
+  }
+  endShape(CLOSE);
+  pop();
+}
+</script>
+</body>
+</html>
