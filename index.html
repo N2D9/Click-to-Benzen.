@@ -79,18 +79,18 @@ function preload() {
 }
 
 function setup() {
-  createCanvas(1300, 800);
+  createCanvas(1200, 800);
   engine = Engine.create();
   world = engine.world;
 
   // 左坂（谷型の左側）
-  let leftSlope = Bodies.rectangle(1200, 600, 770, 1, {
+  let leftSlope = Bodies.rectangle(1050, 600, 770, 1, {
     isStatic: true,
     angle: -PI / 12
   });
 
   // 右坂（谷型の右側）
-  let rightSlope = Bodies.rectangle(300, 600, 770, 1, {
+  let rightSlope = Bodies.rectangle(150, 600, 770, 1, {
     isStatic: true,
     angle: PI / 12
   });
@@ -166,7 +166,7 @@ function draw() {
     fill(0, counterAlpha);
     textAlign(LEFT, TOP);
     textSize(64);
-    text(collisionCount, 750 -30 * Math.floor(Math.log10(collisionCount)) , 400);
+    text(collisionCount, 600 -30 * Math.floor(Math.log10(collisionCount)) , 400);
   }
 }
 
