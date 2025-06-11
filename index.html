@@ -79,18 +79,18 @@ function preload() {
 }
 
 function setup() {
-  createCanvas(1500, 800);
+  createCanvas(1300, 800);
   engine = Engine.create();
   world = engine.world;
 
   // 左坂（谷型の左側）
-  let leftSlope = Bodies.rectangle(1200, 700, 770, 1, {
+  let leftSlope = Bodies.rectangle(1200, 600, 770, 1, {
     isStatic: true,
     angle: -PI / 12
   });
 
   // 右坂（谷型の右側）
-  let rightSlope = Bodies.rectangle(300, 700, 770, 1, {
+  let rightSlope = Bodies.rectangle(300, 600, 770, 1, {
     isStatic: true,
     angle: PI / 12
   });
